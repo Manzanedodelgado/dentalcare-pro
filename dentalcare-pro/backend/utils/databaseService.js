@@ -45,7 +45,10 @@ const sqlServerConfig = {
   options: {
     encrypt: false,
     trustServerCertificate: true,
-    enableArithAbort: true
+    enableArithAbort: true,
+    // Configurar timeout para conexiones desde Render.com
+    requestTimeout: 30000,
+    connectionTimeout: 10000
   },
   pool: {
     max: 10,
@@ -53,6 +56,10 @@ const sqlServerConfig = {
     idleTimeoutMillis: 30000
   }
 };
+
+// IPs de Render.com permitidas para acceder al SQL Server
+const renderAllowedIPs = process.env.RENDER_ALLOWED_IPS || 
+  '44.229.227.142,54.188.71.94,52.13.128.108,74.220.48.0/24,74.220.56.0/24';
 
 // ==============================================
 // POOLS DE CONEXIÓN
