@@ -12,6 +12,57 @@
 const logger = require('./logger');
 
 // ==============================================
+// MAPEOS ESPECÍFICOS DE GELITE
+// ==============================================
+
+/**
+ * Estados de citas específicos de GELITE (IdSitC)
+ */
+const ESTADOS_CITAS_GELITE = {
+  0: 'planificada',    // Planificada
+  1: 'anulada',        // Anulada  
+  5: 'finalizada',     // Finalizada
+  7: 'confirmada',     // Confirmada
+  8: 'cancelada',      // Cancelada
+  9: 'aceptada'        // Aceptada
+};
+
+/**
+ * Tratamientos específicos de GELITE (IdIcono)
+ */
+const TRATAMIENTOS_GELITE = {
+  1: 'Control',
+  2: 'Urgencia',
+  3: 'Protesis Fija',
+  4: 'Cirugia/Injerto',
+  6: 'Retirar Ortodoncia',
+  7: 'Protesis Removible', 
+  8: 'Colocacion Ortodoncia',
+  9: 'Periodoncia',
+  10: 'Cirugía de Implante',
+  11: 'Mensualidad Ortodoncia',
+  12: 'Ajuste Prot/tto',
+  13: 'Primera Visita',
+  14: 'Higiene Dental',
+  15: 'Endodoncia',
+  16: 'Reconstruccion',
+  17: 'Exodoncia',
+  18: 'Estudio Ortodoncia',
+  19: 'Rx/escaner'
+};
+
+/**
+ * Odontólogos específicos de GELITE (IdUsu)
+ */
+const ODONTOLOGOS_GELITE = {
+  3: 'Dr. Mario Rubio',
+  4: 'Dra. Irene Garcia', 
+  8: 'Dra. Virginia Tresgallo',
+  10: 'Dra. Miriam Carrasco',
+  12: 'Tc. Juan Antonio Manzanedo'
+};
+
+// ==============================================
 // UTILIDADES DE CONVERSIÓN
 // ==============================================
 
@@ -83,31 +134,48 @@ function calculateEndTime(startSeconds, durationSeconds) {
  */
 function mapSQLServerToApp(sqlServerRow) {
   try {
-    // Convertir campos principales
+    // Convertir campos principales usando conversión SQL
     const fecha = excelSerialToDate(sqlServerRow.Fecha);
     const horaInicio = secondsToTime(sqlServerRow.Hora);
     const horaFin = calculateEndTime(sqlServerRow.Hora, sqlServerRow.Duracion);
     
-    // Mapear paciente
-    const pacienteNombre = sqlServerRow.Texto || sqlServerRow.Contacto || 'Sin nombre';
-    const pacienteId = sqlServerRow.IdPac || sqlServerRow.NUMPAC || null;
+    // Mapear paciente separando nombre y apellidos
+    let pacienteNombre = sqlServerRow.Texto || 'Sin nombre';
+    let nombre = pacienteNombre;
+    let apellidos = null;
     
-    // Determinar estado basado en campos existentes
+    if (sqlServerRow.Texto && sqlServerRow.Texto.includes(',')) {
+      const parts = sqlServerRow.Texto.split(',');
+      apellidos = parts[0].trim();
+      nombre = parts.slice(1).join(',').trim();
+    }
+    
+    const pacienteId = sqlServerRow.IdPac || sqlServerRow.NUMPAC || sqlServerRow.Registro || null;
+    
+    // Mapear estado usando IdSitC específico de GELITE
     let estado = 'planificada'; // Por defecto
-    if (sqlServerRow.Confirmada === 1) {
-      estado = 'confirmada';
+    if (sqlServerRow.IdSitC !== undefined && ESTADOS_CITAS_GELITE[sqlServerRow.IdSitC]) {
+      estado = ESTADOS_CITAS_GELITE[sqlServerRow.IdSitC];
     }
-    if (sqlServerRow.Aceptada === 1) {
-      estado = 'aceptada';
+    
+    // Mapear tratamiento usando IdIcono específico de GELITE
+    let tratamiento = 'Consulta';
+    if (sqlServerRow.IdIcono !== undefined && TRATAMIENTOS_GELITE[sqlServerRow.IdIcono]) {
+      tratamiento = TRATAMIENTOS_GELITE[sqlServerRow.IdIcono];
     }
-    if (sqlServerRow.FlgBloqueo === 'F') {
-      // 'F' podría indicar que está cancelada o bloqueada
-      estado = 'anulada';
+    
+    // Mapear odontólogo usando IdUsu específico de GELITE
+    let odontologo = 'Odontologo';
+    if (sqlServerRow.IdUsu !== undefined && ODONTOLOGOS_GELITE[sqlServerRow.IdUsu]) {
+      odontologo = ODONTOLOGOS_GELITE[sqlServerRow.IdUsu];
     }
+    
+    // Calcular duración en minutos
+    const duracionMinutos = Math.round((sqlServerRow.Duracion || 0) / 60);
     
     // Crear objeto mapeado
     const mappedAppointment = {
-      id: sqlServerRow.IdCitasP || sqlServerRow.IdCita || `sql_${sqlServerRow.IdOrden}`,
+      id: sqlServerRow.Registro || sqlServerRow.IdCita || sqlServerRow.IdCitasP || `sql_${sqlServerRow.IdOrden || 'unknown'}`,
       
       // Datos de fecha y hora (formato aplicación)
       appointment_date: fecha,
@@ -116,32 +184,40 @@ function mapSQLServerToApp(sqlServerRow) {
       
       // Datos de paciente
       patient_id: pacienteId ? pacienteId.toString() : null,
-      patient_name: pacienteNombre,
+      patient_name: nombre,
+      patient_surname: apellidos,
+      patient_full_name: sqlServerRow.Texto || 'Sin nombre',
       
       // Datos de tratamiento
-      treatment_type: sqlServerRow.IdSitC || sqlServerRow.IdProced || 'Consulta general',
-      notes: sqlServerRow.NOTAS || sqlServerRow.Texto || '',
+      treatment_type: tratamiento,
+      notes: sqlServerRow.NOTAS || '',
+      
+      // Personal (odontólogo)
+      dentist_name: odontologo,
       
       // Estado y control
       status: estado,
+      status_id: sqlServerRow.IdSitC,
+      icon_id: sqlServerRow.IdIcono,
+      user_id: sqlServerRow.IdUsu,
       
       // Campos de control
-      created_at: sqlServerRow.FecAlta ? new Date(sqlServerRow.FecAlta).toISOString() : new Date().toISOString(),
+      created_at: sqlServerRow.FechaAlta ? new Date(sqlServerRow.FechaAlta).toISOString() : new Date().toISOString(),
       updated_at: new Date().toISOString(),
       
-      // Campos adicionales útiles
-      duracion_segundos: sqlServerRow.Duracion,
-      contacto_telefono: sqlServerRow.Contacto || sqlServerRow.Movil || '',
-      num_paciente: sqlServerRow.NUMPAC || null,
-      confirmada: sqlServerRow.Confirmada === 1,
-      recordada: sqlServerRow.Recordada === 1,
+      // Campos adicionales específicos de GELITE
+      contacto_telefono: sqlServerRow.TelMovil || sqlServerRow.Movil || '',
+      num_paciente: sqlServerRow.NumPac || sqlServerRow.NUMPAC || null,
+      registro: sqlServerRow.Registro || null,
+      citamod: sqlServerRow.CitMod || null,
       
       // Metadatos
-      source: 'sql_server_legacy',
-      id_original: sqlServerRow.IdOrden
+      source: 'gelite_sql_server',
+      id_original: sqlServerRow.IdOrden || sqlServerRow.Registro,
+      duracion_minutos: duracionMinutos
     };
     
-    logger.info(`Cita mapeada: ${mappedAppointment.id} - ${pacienteNombre}`);
+    logger.info(`Cita GELITE mapeada: ${mappedAppointment.id} - ${mappedAppointment.patient_full_name}`);
     
     return mappedAppointment;
   } catch (error) {
@@ -277,6 +353,11 @@ module.exports = {
   secondsToTime,
   durationToTime,
   calculateEndTime,
+  
+  // Mapeos específicos de GELITE
+  ESTADOS_CITAS_GELITE,
+  TRATAMIENTOS_GELITE,
+  ODONTOLOGOS_GELITE,
   
   // Mapeadores principales
   mapSQLServerToApp,

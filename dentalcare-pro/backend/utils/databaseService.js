@@ -37,8 +37,8 @@ const postgreSQLConfig = {
 
 // Configuración SQL Server (Local)
 const sqlServerConfig = {
-  server: process.env.SQL_SERVER || 'gabinete2\\box2',
-  database: process.env.SQL_DATABASE || 'clinica-dental-db',
+  server: process.env.SQL_SERVER || 'GABINETE2\\INFOMED',
+  database: process.env.SQL_DATABASE || 'GELITE',
   user: process.env.SQL_USERNAME || 'sa',
   password: process.env.SQL_PASSWORD || '',
   options: {

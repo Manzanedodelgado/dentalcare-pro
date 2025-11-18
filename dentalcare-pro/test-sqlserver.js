@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 
 /**
- * SCRIPT DE PRUEBA Y VERIFICACIÓN SQL SERVER 2008
+ * SCRIPT DE PRUEBA Y VERIFICACIÓN GELITE SQL SERVER
  * DentalCare Pro - Sistema de Gestión Dental
  * 
  * Este script verifica:
- * 1. Conectividad con SQL Server 2008 local
- * 2. Presencia de la tabla dbo.DCitas
- * 3. Estructura de datos compatible
- * 4. Mapeo de datos legacy
- * 5. Sincronización básica
+ * 1. Conectividad con GELITE SQL Server (GABINETE2\INFOMED)
+ * 2. Presencia de la tabla dbo.DCitas en base GELITE
+ * 3. Estructura de datos compatible con mapeos GELITE
+ * 4. Mapeo de datos legacy usando estados/tratamientos específicos
+ * 5. Sincronización bidireccional
  * 
  * Uso: node test-sqlserver.js
  * 
  * @author MiniMax Agent
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 require('dotenv').config();
 
 const { connectSQLServer, querySQLServer, checkSQLServerConnection } = require('./utils/databaseService');
-const { mapSQLServerToApp, validateSQLServerRecord, excelSerialToDate, secondsToTime } = require('./utils/sqlServerDataMapper');
+const { mapSQLServerToApp, validateSQLServerRecord, excelSerialToDate, secondsToTime, ESTADOS_CITAS_GELITE, TRATAMIENTOS_GELITE, ODONTOLOGOS_GELITE } = require('./utils/sqlServerDataMapper');
 const logger = require('./utils/logger');
 
 // ==============================================
@@ -316,11 +316,11 @@ async function testSQLQueries() {
 
 async function main() {
   log(colors.bright + colors.blue, '\n' + '█'.repeat(60));
-  log(colors.bright + colors.blue, '  DENTALCARE PRO - PRUEBA SQL SERVER 2008');
+  log(colors.bright + colors.blue, '  DENTALCARE PRO - PRUEBA GELITE SQL SERVER');
   log(colors.bright + colors.blue, '  '.repeat(30) + 'MiniMax Agent');
   log(colors.bright + colors.blue, '█'.repeat(60));
   
-  console.log('\nIniciando verificación completa del sistema SQL Server...\n');
+  console.log('\nIniciando verificación completa del sistema GELITE SQL Server...\n');
   
   const tests = [
     { name: 'Conectividad', fn: testConnection },
