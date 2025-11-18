@@ -16,6 +16,7 @@
 const { Pool } = require('pg');
 const sql = require('mssql');
 const logger = require('./logger');
+const { mapSQLServerToApp, mapAppToSQLServer } = require('./sqlServerDataMapper');
 
 // ==============================================
 // CONFIGURACIÓN DE CONEXIONES
@@ -260,11 +261,17 @@ async function querySQLServer(queryText, params = []) {
 }
 
 /**
- * Obtener citas de SQL Server (dbo.DCitas)
+ * Obtener citas de SQL Server (dbo.DCitas) con mapeo automático
  */
 async function getAppointmentsFromSQLServer(dateFrom = null, dateTo = null) {
   try {
-    let queryText = 'SELECT * FROM dbo.DCitas';
+    let queryText = `
+      SELECT 
+        IdOrden, Fecha, Hora, Duracion, Texto, IdPac, NUMPAC, 
+        Contacto, Movil, NOTAS, Confirmada, Aceptada, FlgBloqueo,
+        FecAlta, IdSitC, IdProced
+      FROM dbo.DCitas
+    `;
     const params = [];
     
     if (dateFrom && dateTo) {
@@ -272,10 +279,37 @@ async function getAppointmentsFromSQLServer(dateFrom = null, dateTo = null) {
       params.push(dateFrom, dateTo);
     }
     
-    queryText += ' ORDER BY fecha, hora_inicio';
+    queryText += ' ORDER BY Fecha, Hora';
     
     const result = await querySQLServer(queryText, params);
-    return result.rows;
+    
+    // Mapear todos los registros al formato de la aplicación
+    const mappedAppointments = result.rows.map(row => {
+      try {
+        return mapSQLServerToApp(row);
+      } catch (mapError) {
+        logger.warn(`Error mapeando registro ${row.IdOrden}:`, mapError.message);
+        // Retornar un objeto básico en caso de error en mapeo
+        return {
+          id: `sql_${row.IdOrden}`,
+          appointment_date: new Date().toISOString().split('T')[0],
+          start_time: '08:00:00',
+          end_time: '08:30:00',
+          patient_id: row.IdPac || null,
+          patient_name: row.Texto || 'Sin nombre',
+          treatment_type: 'Consulta',
+          notes: row.NOTAS || '',
+          status: 'planificada',
+          source: 'sql_server_legacy',
+          id_original: row.IdOrden,
+          error: mapError.message
+        };
+      }
+    });
+    
+    logger.info(`Obtendidas ${mappedAppointments.length} citas mapeadas desde SQL Server`);
+    
+    return mappedAppointments;
   } catch (error) {
     logger.error('Error getting appointments from SQL Server:', error);
     throw error;
@@ -283,57 +317,77 @@ async function getAppointmentsFromSQLServer(dateFrom = null, dateTo = null) {
 }
 
 /**
- * Sincronizar cita con SQL Server
+ * Sincronizar cita con SQL Server usando mapeo automático
  */
 async function syncAppointmentToSQLServer(appointment) {
   try {
+    // Mapear cita de la aplicación al formato SQL Server
+    const sqlServerData = mapAppToSQLServer(appointment);
+    
     const query = `
       MERGE dbo.DCitas AS target
       USING (SELECT 
-        @cita_id as cita_id,
-        @fecha as fecha,
-        @hora_inicio as hora_inicio,
-        @hora_fin as hora_fin,
-        @paciente_id as paciente_id,
-        @paciente_nombre as paciente_nombre,
-        @tratamiento as tratamiento,
-        @estado as estado,
-        @notas as notas,
-        @created_at as created_at,
-        @updated_at as updated_at
+        @IdOrden as IdOrden,
+        @Fecha as Fecha,
+        @Hora as Hora,
+        @Duracion as Duracion,
+        @Texto as Texto,
+        @IdPac as IdPac,
+        @NUMPAC as NUMPAC,
+        @Contacto as Contacto,
+        @Movil as Movil,
+        @NOTAS as NOTAS,
+        @Confirmada as Confirmada,
+        @Aceptada as Aceptada,
+        @FlgBloqueo as FlgBloqueo,
+        @FecAlta as FecAlta,
+        @IdSitC as IdSitC,
+        @IdProced as IdProced
       ) AS source
-      ON target.cita_id = source.cita_id
+      ON target.IdOrden = source.IdOrden
       WHEN MATCHED THEN
         UPDATE SET 
-          fecha = source.fecha,
-          hora_inicio = source.hora_inicio,
-          hora_fin = source.hora_fin,
-          paciente_nombre = source.paciente_nombre,
-          tratamiento = source.tratamiento,
-          estado = source.estado,
-          notas = source.notas,
-          updated_at = source.updated_at
+          Fecha = source.Fecha,
+          Hora = source.Hora,
+          Duracion = source.Duracion,
+          Texto = source.Texto,
+          IdPac = source.IdPac,
+          NUMPAC = source.NUMPAC,
+          Contacto = source.Contacto,
+          Movil = source.Movil,
+          NOTAS = source.NOTAS,
+          Confirmada = source.Confirmada,
+          Aceptada = source.Aceptada,
+          FlgBloqueo = source.FlgBloqueo,
+          IdSitC = source.IdSitC,
+          IdProced = source.IdProced
       WHEN NOT MATCHED THEN
-        INSERT (cita_id, fecha, hora_inicio, hora_fin, paciente_id, paciente_nombre, tratamiento, estado, notas, created_at, updated_at)
-        VALUES (source.cita_id, source.fecha, source.hora_inicio, source.hora_fin, source.paciente_id, source.paciente_nombre, source.tratamiento, source.estado, source.notas, source.created_at, source.updated_at);
+        INSERT (IdOrden, Fecha, Hora, Duracion, Texto, IdPac, NUMPAC, Contacto, Movil, NOTAS, Confirmada, Aceptada, FlgBloqueo, FecAlta, IdSitC, IdProced)
+        VALUES (source.IdOrden, source.Fecha, source.Hora, source.Duracion, source.Texto, source.IdPac, source.NUMPAC, source.Contacto, source.Movil, source.NOTAS, source.Confirmada, source.Aceptada, source.FlgBloqueo, source.FecAlta, source.IdSitC, source.IdProced);
     `;
     
+    // Crear array de parámetros para el mapeo
     const params = [
-      appointment.id,
-      appointment.appointment_date,
-      appointment.start_time,
-      appointment.end_time,
-      appointment.patient_id,
-      appointment.patient_name || '',
-      appointment.treatment_type || '',
-      appointment.status,
-      appointment.notes || '',
-      appointment.created_at,
-      appointment.updated_at
+      sqlServerData.IdOrden,
+      sqlServerData.Fecha,
+      sqlServerData.Hora,
+      sqlServerData.Duracion,
+      sqlServerData.Texto,
+      sqlServerData.IdPac,
+      sqlServerData.NUMPAC,
+      sqlServerData.Contacto,
+      sqlServerData.Movil,
+      sqlServerData.NOTAS,
+      sqlServerData.Confirmada,
+      sqlServerData.Aceptada,
+      sqlServerData.FlgBloqueo,
+      sqlServerData.FecAlta,
+      sqlServerData.IdSitC,
+      sqlServerData.IdProced
     ];
     
     const result = await querySQLServer(query, params);
-    logger.info(`Appointment ${appointment.id} synced to SQL Server`);
+    logger.info(`Appointment ${appointment.id} synced to SQL Server (legacy format)`);
     
     return result;
   } catch (error) {
@@ -343,36 +397,46 @@ async function syncAppointmentToSQLServer(appointment) {
 }
 
 /**
- * Crear nueva cita en SQL Server
+ * Crear nueva cita en SQL Server usando mapeo automático
  */
 async function createAppointmentInSQLServer(appointment) {
   try {
+    // Mapear cita de la aplicación al formato SQL Server
+    const sqlServerData = mapAppToSQLServer(appointment);
+    
     const query = `
       INSERT INTO dbo.DCitas (
-        cita_id, fecha, hora_inicio, hora_fin, paciente_id, paciente_nombre,
-        tratamiento, estado, notas, created_at, updated_at
+        IdOrden, Fecha, Hora, Duracion, Texto, IdPac, NUMPAC, 
+        Contacto, Movil, NOTAS, Confirmada, Aceptada, FlgBloqueo,
+        FecAlta, IdSitC, IdProced
       ) VALUES (
-        @cita_id, @fecha, @hora_inicio, @hora_fin, @paciente_id, @paciente_nombre,
-        @tratamiento, @estado, @notas, @created_at, @updated_at
+        @IdOrden, @Fecha, @Hora, @Duracion, @Texto, @IdPac, @NUMPAC,
+        @Contacto, @Movil, @NOTAS, @Confirmada, @Aceptada, @FlgBloqueo,
+        @FecAlta, @IdSitC, @IdProced
       )
     `;
     
     const params = [
-      appointment.id,
-      appointment.appointment_date,
-      appointment.start_time,
-      appointment.end_time,
-      appointment.patient_id,
-      appointment.patient_name || '',
-      appointment.treatment_type || '',
-      appointment.status,
-      appointment.notes || '',
-      appointment.created_at,
-      appointment.updated_at
+      sqlServerData.IdOrden,
+      sqlServerData.Fecha,
+      sqlServerData.Hora,
+      sqlServerData.Duracion,
+      sqlServerData.Texto,
+      sqlServerData.IdPac,
+      sqlServerData.NUMPAC,
+      sqlServerData.Contacto,
+      sqlServerData.Movil,
+      sqlServerData.NOTAS,
+      sqlServerData.Confirmada,
+      sqlServerData.Aceptada,
+      sqlServerData.FlgBloqueo,
+      sqlServerData.FecAlta,
+      sqlServerData.IdSitC,
+      sqlServerData.IdProced
     ];
     
     const result = await querySQLServer(query, params);
-    logger.info(`Appointment ${appointment.id} created in SQL Server`);
+    logger.info(`Appointment ${appointment.id} created in SQL Server (legacy format)`);
     
     return result;
   } catch (error) {
@@ -382,28 +446,110 @@ async function createAppointmentInSQLServer(appointment) {
 }
 
 /**
- * Actualizar cita en SQL Server
+ * Actualizar cita en SQL Server usando mapeo automático
  */
 async function updateAppointmentInSQLServer(appointmentId, updates) {
   try {
+    // Esta función se mantiene como estaba porque hace actualizaciones parciales
+    // y el mapeo completo podría perder cambios específicos
     let setClause = [];
     const params = [];
     let paramIndex = 0;
     
-    // Construir cláusula SET dinámicamente
-    Object.keys(updates).forEach(key => {
-      setClause.push(`${key} = @param${paramIndex}`);
-      params.push(updates[key]);
+    // Mapear campos específicos de updates al formato SQL Server
+    const sqlServerUpdates = {};
+    
+    if (updates.patient_name !== undefined) {
+      setClause.push(`Texto = @param${paramIndex}`);
+      params.push(updates.patient_name);
       paramIndex++;
-    });
+    }
+    
+    if (updates.patient_id !== undefined) {
+      setClause.push(`IdPac = @param${paramIndex}`);
+      params.push(updates.patient_id);
+      paramIndex++;
+    }
+    
+    if (updates.notes !== undefined) {
+      setClause.push(`NOTAS = @param${paramIndex}`);
+      params.push(updates.notes);
+      paramIndex++;
+    }
+    
+    // Manejar estado
+    if (updates.status !== undefined) {
+      let confirmada = 0;
+      let aceptada = 0;
+      let flgBloqueo = 'F';
+      
+      switch (updates.status) {
+        case 'confirmada':
+          confirmada = 1;
+          break;
+        case 'aceptada':
+          confirmada = 1;
+          aceptada = 1;
+          break;
+        case 'anulada':
+          flgBloqueo = 'T';
+          break;
+      }
+      
+      setClause.push(`Confirmada = @param${paramIndex}`);
+      params.push(confirmada);
+      paramIndex++;
+      
+      setClause.push(`Aceptada = @param${paramIndex}`);
+      params.push(aceptada);
+      paramIndex++;
+      
+      setClause.push(`FlgBloqueo = @param${paramIndex}`);
+      params.push(flgBloqueo);
+      paramIndex++;
+    }
+    
+    // Manejar fecha y hora si se proporcionan
+    if (updates.appointment_date !== undefined) {
+      const fechaObj = new Date(updates.appointment_date);
+      const daysSince1900 = Math.floor((fechaObj.getTime() - new Date(1900, 0, 1).getTime()) / (24 * 60 * 60 * 1000)) + 2;
+      
+      setClause.push(`Fecha = @param${paramIndex}`);
+      params.push(daysSince1900);
+      paramIndex++;
+    }
+    
+    if (updates.start_time !== undefined) {
+      const horaObj = new Date(`2000-01-01T${updates.start_time}`);
+      const horaSegundos = horaObj.getHours() * 3600 + horaObj.getMinutes() * 60;
+      
+      setClause.push(`Hora = @param${paramIndex}`);
+      params.push(horaSegundos);
+      paramIndex++;
+    }
+    
+    if (updates.end_time !== undefined && updates.start_time !== undefined) {
+      const horaObj = new Date(`2000-01-01T${updates.start_time}`);
+      const endTime = new Date(`2000-01-01T${updates.end_time}`);
+      const duracion = (endTime - horaObj) / 1000; // segundos
+      
+      setClause.push(`Duracion = @param${paramIndex}`);
+      params.push(duracion);
+      paramIndex++;
+    }
+    
+    // Añadir timestamp de actualización
+    setClause.push(`FecAlta = @param${paramIndex}`);
+    params.push(new Date().toLocaleString('en-US'));
+    paramIndex++;
     
     const query = `
       UPDATE dbo.DCitas 
-      SET ${setClause.join(', ')}, updated_at = @param${paramIndex}
-      WHERE cita_id = @param${paramIndex + 1}
+      SET ${setClause.join(', ')}
+      WHERE IdOrden = @param${paramIndex}
     `;
     
-    params.push(new Date(), appointmentId);
+    params.push(appointmentId.replace('sql_', ''));
     
     const result = await querySQLServer(query, params);
     logger.info(`Appointment ${appointmentId} updated in SQL Server`);
