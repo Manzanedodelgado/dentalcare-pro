@@ -1,0 +1,38 @@
+{
+  "version": "1",
+  "services": [
+    {
+      "type": "web",
+      "name": "dentalcare-pro-backend",
+      "runtime": "node",
+      "buildCommand": "npm install",
+      "startCommand": "node server.js",
+      "env": "node",
+      "regions": ["frankfurt", "oregon", "singapore"],
+      "plan": "free",
+      "healthCheckPath": "/health",
+      "restartPolicyType": "on_failure",
+      "restartPolicyMaxRetries": 10,
+      "disk": {
+        "name": "dentalcare-data",
+        "mountPath": "/data",
+        "sizeGB": 5
+      }
+    }
+  ],
+  "regions": ["frankfurt"],
+  "services_database": {
+    "type": "database",
+    "name": "dentalcare-sqlserver",
+    "database": "sql-server",
+    "version": "2019"
+  },
+  "databases": [
+    {
+      "name": "dentalcare-db",
+      "databaseName": "clinica-dental-db",
+      "user": "sa",
+      "version": "2019"
+    }
+  ]
+}

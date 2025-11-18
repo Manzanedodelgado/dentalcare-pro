@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DentalCare Pro - Sistema de Gestión Dental</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/agenda.css">
+    <link rel="stylesheet" href="css/whatsapp.css">
+    <link rel="stylesheet" href="css/patients.css">
+    <link rel="stylesheet" href="css/invoices.css">
+    <link rel="stylesheet" href="css/documents.css">
+    <link rel="stylesheet" href="css/accounting.css">
+    <link rel="stylesheet" href="css/legal.css">
+    <link rel="stylesheet" href="css/users.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <meta name="description" content="Sistema integral de gestión para clínicas dentales con integración WhatsApp, facturación Verifactu y cumplimiento LOPD">
+    <meta name="author" content="MiniMax Agent">
+    <meta name="keywords" content="dental clinic, gestión clínica, WhatsApp, Verifactu, LOPD, citas, pacientes">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                    <circle cx="30" cy="30" r="30" fill="url(#gradient1)"/>
+                    <path d="M25 20h10v20H25z" fill="white"/>
+                    <path d="M20 25h20v10H20z" fill="white"/>
+                    <path d="M18 15h24v3H18z" fill="white"/>
+                    <path d="M18 42h24v3H18z" fill="white"/>
+                </svg>
+            </div>
+            <h1>DentalCare Pro</h1>
+            <p>Cargando sistema de gestión dental...</p>
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Container -->
+    <div id="login-container" class="login-container hidden">
+        <div class="login-wrapper">
+            <div class="login-header">
+                <div class="logo">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="20" fill="url(#gradient1)"/>
+                        <path d="M15 13h10v14H15z" fill="white"/>
+                        <path d="M12 17h16v6H12z" fill="white"/>
+                        <path d="M11 9h18v2H11z" fill="white"/>
+                        <path d="M11 29h18v2H11z" fill="white"/>
+                    </svg>
+                    <h1>DentalCare Pro</h1>
+                </div>
+                <p>Sistema de Gestión Dental Integral</p>
+            </div>
+            
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="doctor@clinica.com">
+                    <span class="input-icon">📧</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <div class="password-container">
+                        <input type="password" id="password" name="password" required placeholder="••••••••">
+                        <button type="button" id="toggle-password" class="toggle-password">
+                            <span class="eye-icon">👁️</span>
+                        </button>
+                    </div>
+                    <span class="input-icon">🔒</span>
+                </div>
+                
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="remember-me">
+                        <span class="checkmark"></span>
+                        Recordarme
+                    </label>
+                    <a href="#" class="forgot-password">¿Olvidaste tu contraseña?</a>
+                </div>
+                
+                <button type="submit" class="login-btn" id="login-btn">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <div class="btn-spinner hidden">
+                        <div class="spinner-small"></div>
+                    </div>
+                </button>
+                
+                <div class="error-message" id="login-error"></div>
+            </form>
+            
+            <div class="login-footer">
+                <p>&copy; 2025 Clínica Dental Rubio García. Todos los derechos reservados.</p>
+                <div class="demo-credentials">
+                    <p><strong>Credenciales Demo:</strong></p>
+                    <p>Email: admin@dentalcare.com</p>
+                    <p>Contraseña: admin123</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app-container" class="app-container hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="sidebar-toggle" class="sidebar-toggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="header-logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <circle cx="16" cy="16" r="16" fill="url(#gradient1)"/>
+                        <path d="M12 10h8v12h-8z" fill="white"/>
+                        <path d="M9 14h14v4H9z" fill="white"/>
+                        <path d="M8 8h16v1H8z" fill="white"/>
+                        <path d="M8 23h16v1H8z" fill="white"/>
+                    </svg>
+                    <h1>DentalCare Pro</h1>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <div class="search-container">
+                    <input type="text" id="global-search" placeholder="Buscar pacientes, citas, documentos...">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <!-- Urgent Messages Indicator -->
+                <div class="urgent-indicator" id="urgent-indicator">
+                    <button class="urgent-btn" id="urgent-btn">
+                        <span class="urgent-icon">🟠</span>
+                        <span class="urgent-count" id="urgent-count">0</span>
+                    </button>
+                    <div class="urgent-dropdown hidden" id="urgent-dropdown">
+                        <div class="urgent-header">
+                            <h3>Mensajes Urgentes</h3>
+                            <button class="urgent-close">✕</button>
+                        </div>
+                        <div class="urgent-list" id="urgent-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Notifications -->
+                <div class="notifications">
+                    <button class="notification-btn" id="notification-btn">
+                        <span class="notification-icon">🔔</span>
+                        <span class="notification-count hidden" id="notification-count">0</span>
+                    </button>
+                </div>
+                
+                <!-- User Menu -->
+                <div class="user-menu">
+                    <button class="user-btn" id="user-btn">
+                        <img src="images/default-avatar.png" alt="Usuario" class="user-avatar">
+                        <span class="user-name" id="user-name">Dr. García</span>
+                        <span class="user-role" id="user-role">Administrador</span>
+                    </button>
+                    <div class="user-dropdown hidden" id="user-dropdown">
+                        <div class="user-info">
+                            <img src="images/default-avatar.png" alt="Usuario">
+                            <div>
+                                <p class="user-name" id="dropdown-user-name">Dr. García</p>
+                                <p class="user-role" id="dropdown-user-role">Administrador</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <a href="#" class="dropdown-item" id="profile-btn">
+                            <span class="icon">👤</span>
+                            Mi Perfil
+                        </a>
+                        <a href="#" class="dropdown-item" id="settings-btn">
+                            <span class="icon">⚙️</span>
+                            Configuración
+                        </a>
+                        <hr>
+                        <a href="#" class="dropdown-item" id="logout-btn">
+                            <span class="icon">🚪</span>
+                            Cerrar Sesión
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <nav class="app-sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <h3>Principal</h3>
+                    <a href="#" class="sidebar-item active" data-page="dashboard">
+                        <span class="icon">📊</span>
+                        <span>Panel de Control</span>
+                        <span class="badge" id="today-appointments-badge">0</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-page="agenda">
+                        <span class="icon">📅</span>
+                        <span>Agenda Completa</span>
+                        <span class="badge" id="total-appointments-badge">0</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Comunicación</h3>
+                    <a href="#" class="sidebar-item" data-page="whatsapp">
+                        <span class="icon">💬</span>
+                        <span>WhatsApp</span>
+                        <span class="badge urgent" id="unread-messages-badge">0</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Gestión</h3>
+                    <a href="#" class="sidebar-item" data-page="patients">
+                        <span class="icon">👥</span>
+                        <span>Pacientes</span>
+                        <span class="badge" id="patients-count-badge">0</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-page="invoices">
+                        <span class="icon">💰</span>
+                        <span>Facturación</span>
+                        <span class="badge" id="pending-invoices-badge">0</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-page="documents">
+                        <span class="icon">📄</span>
+                        <span>Documentos</span>
+                        <span class="badge" id="pending-documents-badge">0</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Administración</h3>
+                    <a href="#" class="sidebar-item" data-page="accounting">
+                        <span class="icon">📈</span>
+                        <span>Contabilidad</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-page="legal">
+                        <span class="icon">⚖️</span>
+                        <span>LOPD</span>
+                        <span class="badge warning" id="pending-legal-badge">0</span>
+                    </a>
+                    <a href="#" class="sidebar-item" data-page="users">
+                        <span class="icon">👤</span>
+                        <span>Usuarios</span>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="connection-status">
+                    <span class="status-indicator online" id="connection-status"></span>
+                    <span>Conectado</span>
+                </div>
+                <div class="clinic-info">
+                    <p><strong>Clínica Dental Rubio García</strong></p>
+                    <p>Versión 1.0.0</p>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page active">
+                <div class="page-header">
+                    <h1>Panel de Control</h1>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="refresh-dashboard">
+                            <span>🔄</span>
+                            Actualizar
+                        </button>
+                        <button class="btn btn-secondary" id="quick-appointment">
+                            <span>➕</span>
+                            Nueva Cita
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon today">📅</div>
+                        <div class="stat-content">
+                            <h3>Citas de Hoy</h3>
+                            <p class="stat-number" id="today-appointments">0</p>
+                            <p class="stat-change positive" id="today-appointments-change">+2 vs ayer</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon patients">👥</div>
+                        <div class="stat-content">
+                            <h3>Pacientes Totales</h3>
+                            <p class="stat-number" id="total-patients">0</p>
+                            <p class="stat-change positive" id="patients-change">+5 este mes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon revenue">💰</div>
+                        <div class="stat-content">
+                            <h3>Ingresos del Mes</h3>
+                            <p class="stat-number" id="monthly-revenue">€0</p>
+                            <p class="stat-change positive" id="revenue-change">+15% vs mes anterior</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon urgent">🟠</div>
+                        <div class="stat-content">
+                            <h3>Mensajes Urgentes</h3>
+                            <p class="stat-number urgent" id="urgent-messages">0</p>
+                            <p class="stat-change" id="urgent-change">0 nuevos</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Schedule -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Agenda de Hoy</h2>
+                        <a href="#" class="section-link" data-page="agenda">Ver toda la agenda →</a>
+                    </div>
+                    <div class="today-schedule" id="today-schedule">
+                        <div class="schedule-loading">
+                            <div class="spinner"></div>
+                            <p>Cargando citas de hoy...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Urgent Messages -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Mensajes Urgentes</h2>
+                        <a href="#" class="section-link" data-page="whatsapp">Ver todos los mensajes →</a>
+                    </div>
+                    <div class="urgent-messages" id="urgent-messages-list">
+                        <div class="no-messages">
+                            <p>No hay mensajes urgentes</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h2>Actividad Reciente</h2>
+                    </div>
+                    <div class="recent-activity" id="recent-activity">
+                        <div class="activity-loading">
+                            <div class="spinner-small"></div>
+                            <p>Cargando actividad...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agenda Page -->
+            <div id="agenda-page" class="page">
+                <div class="page-header">
+                    <h1>Agenda Completa</h1>
+                    <div class="page-actions">
+                        <div class="date-navigation">
+                            <button class="btn btn-icon" id="prev-day">←</button>
+                            <input type="date" id="agenda-date" class="date-input">
+                            <button class="btn btn-icon" id="next-day">→</button>
+                        </div>
+                        <button class="btn btn-primary" id="new-appointment">
+                            <span>➕</span>
+                            Nueva Cita
+                        </button>
+                        <button class="btn btn-secondary" id="sync-agenda">
+                            <span>🔄</span>
+                            Sincronizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="agenda-container">
+                    <div class="agenda-sidebar">
+                        <div class="calendar-widget">
+                            <div class="calendar-header">
+                                <h3>Calendario</h3>
+                                <div class="calendar-nav">
+                                    <button id="prev-month" class="btn btn-icon">←</button>
+                                    <span id="current-month">Enero 2025</span>
+                                    <button id="next-month" class="btn btn-icon">→</button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid" id="calendar-grid">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="agenda-filters">
+                            <h3>Filtros</h3>
+                            <div class="filter-group">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="filter-confirmed" checked>
+                                    <span class="checkmark"></span>
+                                    Confirmadas
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="filter-pending" checked>
+                                    <span class="checkmark"></span>
+                                    Pendientes
+                                </label>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="filter-cancelled" checked>
+                                    <span class="checkmark"></span>
+                                    Canceladas
+                                </label>
+                            </div>
+                            <div class="filter-group">
+                                <label for="filter-dentist">Dentista:</label>
+                                <select id="filter-dentist" class="select-input">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="agenda-main">
+                        <div class="agenda-timeline" id="agenda-timeline">
+                            <div class="timeline-header">
+                                <div class="time-column">Hora</div>
+                                <div class="appointment-column">Citas</div>
+                            </div>
+                            <div class="timeline-content" id="timeline-content">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp Page -->
+            <div id="whatsapp-page" class="page">
+                <div class="page-header">
+                    <h1>WhatsApp Business</h1>
+                    <div class="page-actions">
+                        <div class="whatsapp-status">
+                            <span class="status-indicator online" id="whatsapp-status"></span>
+                            <span id="whatsapp-status-text">Conectado</span>
+                        </div>
+                        <button class="btn btn-primary" id="new-message">
+                            <span>💬</span>
+                            Nuevo Mensaje
+                        </button>
+                        <button class="btn btn-secondary" id="whatsapp-settings">
+                            <span>⚙️</span>
+                            Configuración
+                        </button>
+                    </div>
+                </div>
+
+                <div class="whatsapp-container">
+                    <div class="whatsapp-sidebar">
+                        <div class="conversations-header">
+                            <h3>Conversaciones</h3>
+                            <div class="conversation-filters">
+                                <button class="filter-btn active" data-filter="all">Todas</button>
+                                <button class="filter-btn" data-filter="urgent">Urgentes</button>
+                                <button class="filter-btn" data-filter="unread">No leídas</button>
+                            </div>
+                        </div>
+                        <div class="conversations-list" id="conversations-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="whatsapp-main">
+                        <div class="chat-header" id="chat-header">
+                            <div class="chat-contact">
+                                <div class="contact-avatar" id="chat-avatar"></div>
+                                <div class="contact-info">
+                                    <h3 id="chat-contact-name">Selecciona una conversación</h3>
+                                    <p id="chat-contact-status">En línea</p>
+                                </div>
+                            </div>
+                            <div class="chat-actions">
+                                <button class="btn btn-icon" id="urgent-mark-btn" title="Marcar como urgente">
+                                    <span class="urgent-icon">🟠</span>
+                                </button>
+                                <button class="btn btn-icon" id="patient-info-btn" title="Ver info del paciente">
+                                    <span class="info-icon">ℹ️</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="no-conversation">
+                                <p>Selecciona una conversación para comenzar</p>
+                            </div>
+                        </div>
+                        <div class="chat-input" id="chat-input">
+                            <div class="input-container">
+                                <input type="text" id="message-input" placeholder="Escribe un mensaje..." disabled>
+                                <div class="input-actions">
+                                    <button class="btn btn-icon" id="attach-file" title="Adjuntar archivo">
+                                        <span>📎</span>
+                                    </button>
+                                    <button class="btn btn-icon" id="send-urgent" title="Enviar como urgente">
+                                        <span class="urgent-icon">🟠</span>
+                                    </button>
+                                    <button class="btn btn-primary" id="send-message" disabled>
+                                        <span>Enviar</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patients Page -->
+            <div id="patients-page" class="page">
+                <div class="page-header">
+                    <h1>Gestión de Pacientes</h1>
+                    <div class="page-actions">
+                        <div class="search-bar">
+                            <input type="text" id="patients-search" placeholder="Buscar por nombre, apellido, teléfono...">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <button class="btn btn-primary" id="new-patient">
+                            <span>👥</span>
+                            Nuevo Paciente
+                        </button>
+                        <button class="btn btn-secondary" id="import-patients">
+                            <span>📥</span>
+                            Importar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="patients-container">
+                    <div class="patients-filters">
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label for="filter-status">Estado:</label>
+                                <select id="filter-status" class="select-input">
+                                    <option value="">Todos</option>
+                                    <option value="active">Activos</option>
+                                    <option value="inactive">Inactivos</option>
+                                    <option value="pending">Pendientes</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="filter-dentist">Dentista:</label>
+                                <select id="filter-dentist" class="select-input">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="filter-age">Edad:</label>
+                                <select id="filter-age" class="select-input">
+                                    <option value="">Todos</option>
+                                    <option value="0-18">0-18 años</option>
+                                    <option value="19-35">19-35 años</option>
+                                    <option value="36-60">36-60 años</option>
+                                    <option value="60+">Más de 60 años</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-outline" id="clear-filters">
+                                Limpiar filtros
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="patients-grid" id="patients-grid">
+                        <div class="patients-loading">
+                            <div class="spinner"></div>
+                            <p>Cargando pacientes...</p>
+                        </div>
+                    </div>
+
+                    <div class="pagination" id="patients-pagination">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- More pages will be added... -->
+            <!-- The pattern continues for all other pages -->
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal" id="appointment-modal">
+            <div class="modal-header">
+                <h2>Nueva Cita</h2>
+                <button class="modal-close">✕</button>
+            </div>
+            <div class="modal-content">
+                <form id="appointment-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="appointment-patient">Paciente</label>
+                            <select id="appointment-patient" required>
+                                <option value="">Seleccionar paciente</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointment-dentist">Dentista</label>
+                            <select id="appointment-dentist" required>
+                                <option value="">Seleccionar dentista</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="appointment-date">Fecha</label>
+                            <input type="date" id="appointment-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointment-time">Hora</label>
+                            <input type="time" id="appointment-time" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="appointment-notes">Notas</label>
+                        <textarea id="appointment-notes" rows="3" placeholder="Notas adicionales..."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancel-appointment">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Cita</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Other modals will be added here -->
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/websocket.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/agenda.js"></script>
+    <script src="js/whatsapp.js"></script>
+    <script src="js/patients.js"></script>
+    <script src="js/invoices.js"></script>
+    <script src="js/documents.js"></script>
+    <script src="js/accounting.js"></script>
+    <script src="js/legal.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
