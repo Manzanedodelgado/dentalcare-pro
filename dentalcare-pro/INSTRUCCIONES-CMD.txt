@@ -1,0 +1,46 @@
+@echo off
+echo ==============================================
+echo 🚨 INSTRUCCIONES EXACTAS - RESOLVER PROBLEMA
+echo ==============================================
+echo.
+echo DESDE TU TERMINAL ACTUAL (donde estás ahora):
+echo.
+echo 1️⃣ EJECUTA ESTE COMANDO PARA SOLUCIONAR GIT:
+echo.
+echo    git reset --hard HEAD
+echo.
+echo 2️⃣ LUEGO ESTE COMANDO PARA SINCRONIZAR:
+echo.
+echo    git pull origin main --rebase
+echo.
+echo 3️⃣ VERIFICAR QUE ESTÁS EN EL LUGAR CORRECTO:
+echo.
+echo    dir
+echo.
+echo    Debe mostrar archivos como:
+echo    - .env
+echo    - package.json
+echo    - configurar-firewall-render.bat
+echo.
+echo ==============================================
+echo ❌ SI NO VES ESOS ARCHIVOS, TU PROYECTO ESTÁ EN OTRO LUGAR
+echo ==============================================
+echo.
+echo ENTONCES NAVEGA A:
+echo.
+echo    cd C:\Users\%USERNAME%\Desktop\dentalcare-pro\dentalcare-pro
+echo    (o donde tengas tu proyecto)
+echo.
+echo LUEGO VUELVE A EJECUTAR LOS COMANDOS DE GIT
+echo.
+echo ==============================================
+echo ✅ UNA VEZ QUE VEAS LOS ARCHIVOS CORRECTOS:
+echo ==============================================
+echo.
+echo 4️⃣ EJECUTAR FIREWALL:
+echo    clic derecho en configurar-firewall-render.bat
+echo    "Ejecutar como administrador"
+echo.
+echo ==============================================
+echo PRESIONA CUALQUIER TECLA PARA SALIR...
+pause >nul
