@@ -35,12 +35,13 @@ const postgreSQLConfig = {
   connectionTimeoutMillis: 2000
 };
 
-// Configuración SQL Server (Local)
+// Configuración SQL Server (Local) - Autenticación de Windows
 const sqlServerConfig = {
   server: process.env.SQL_SERVER || 'GABINETE2\\INFOMED',
   database: process.env.SQL_DATABASE || 'GELITE',
-  user: process.env.SQL_USERNAME || 'sa',
-  password: process.env.SQL_PASSWORD || '',
+  authentication: {
+    type: 'default'
+  },
   options: {
     encrypt: false,
     trustServerCertificate: true,
